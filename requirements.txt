@@ -1,0 +1,9 @@
+# Sample Identifiability project (CSE 291, Project 2)
+# Tested with Python 3.9-3.12.
+numpy>=1.23
+pandas>=1.5
+scipy>=1.9
+scikit-learn>=1.1
+# Optional: only needed for Model 5 (contrastive metric learning). The pipeline runs
+# without it (Model 5 is then skipped / returns trivial scores).
+torch>=1.12

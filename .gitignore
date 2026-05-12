@@ -1,0 +1,14 @@
+# downloaded datasets (large; re-fetch with `python src/download_data.py`)
+data/*.tsv
+data/*.zip
+data/*.csv
+# generated results
+results/
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+
+# local Claude Code settings
+.claude/
