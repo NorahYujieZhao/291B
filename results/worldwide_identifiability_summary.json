@@ -1,0 +1,10 @@
+{
+  "n_samples": 336,
+  "n_identifiable": 327,
+  "frac_identifiable": 0.9732142857142857,
+  "median_detected_saaps": 537.0,
+  "median_informative_saaps": 297.0,
+  "n_saap_features": 7431,
+  "n_saap_features_with_freq": 2887,
+  "identifiability_threshold": 1e-10
+}
