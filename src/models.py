@@ -157,9 +157,18 @@ class SimilarityPCA:
 
 class RandomForestPairs:
     """Random-forest classifier on the symmetric pairwise difference vector
-    ``d = |log2(A) - log2(B)|`` over the filtered Representation-B features."""
+    over a missingness-aware Representation-B feature space.
 
-    representation = "intensity_log"
+    The input matrix concatenates:
+      1. filtered / imputed log-intensity features
+      2. binary missingness indicators for those same retained features
+
+    so the pairwise representation is still ``d = |A - B|``, but now it also contains
+    0/1 differences that tell the forest whether a peptidoform was observed in one sample
+    and missing in the other.
+    """
+
+    representation = "intensity_log_missing"
     needs_training = True
 
     def __init__(self, n_estimators=300, max_depth=None, min_samples_leaf=2,

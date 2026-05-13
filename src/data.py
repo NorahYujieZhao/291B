@@ -440,14 +440,18 @@ class IntensityPreprocessor:
     Steps: select features by max-missingness (computed on the training samples),
     drop near-zero-variance features, log2-transform, impute missing entries
     (per-feature minimum of observed log values by default), optionally L2-normalise rows.
+
+    If ``include_missing_indicators`` is True, ``transform()`` returns the imputed log-intensity
+    features concatenated with a binary missingness mask for the same retained features.
     """
 
-    max_missing: float = 0.5            # drop peptidoforms missing in > this fraction of train samples
+    max_missing: float = 0.5             # drop peptidoforms missing in > this fraction of train samples
     min_variance_quantile: float = 0.10  # drop the lowest-variance features (by quantile)
     top_k_by_variance: int | None = None  # if set, keep only the top-k highest-variance features
-    impute: str = "min"                 # "min" | "halfmin" | "median" | "zero"
+    impute: str = "min"                  # "min" | "halfmin" | "median" | "zero"
     log_transform: bool = True
     l2_normalise: bool = False
+    include_missing_indicators: bool = False
 
     features_: list = field(default_factory=list)
     impute_values_: np.ndarray | None = None
@@ -499,6 +503,12 @@ class IntensityPreprocessor:
         self.impute_values_ = impute_vals
         return self
 
+    def output_feature_names(self):
+        if not self.include_missing_indicators:
+            return list(self.features_)
+        miss_names = [f"{f}__missing" for f in self.features_]
+        return list(self.features_) + miss_names
+
     def transform(self, intensity_df: pd.DataFrame) -> np.ndarray:
         if not self.features_:
             raise RuntimeError("IntensityPreprocessor.transform called before fit")
@@ -512,11 +522,13 @@ class IntensityPreprocessor:
             norms = np.linalg.norm(logX, axis=1, keepdims=True)
             norms[norms == 0] = 1.0
             logX = logX / norms
+        if self.include_missing_indicators:
+            miss = mask.astype(float)
+            return np.concatenate([logX, miss], axis=1)
         return logX
 
     def fit_transform(self, intensity_df: pd.DataFrame) -> np.ndarray:
         return self.fit(intensity_df).transform(intensity_df)
-
 
 # --------------------------------------------------------------------------------------
 # Patient-level cross-validation folds

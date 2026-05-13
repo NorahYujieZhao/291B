@@ -72,20 +72,43 @@ class FoldRepresentations:
         self.saap_pvalue = fm["pvalue"].values
         self.saap_freq = None  # filled in by run() if a dbSNP table is available
 
-        # ---- Representation B: filtered / imputed log-intensity -------------------
+        # ---- Representation B1: filtered / imputed log-intensity -------------------
+        # Used by the raw baselines and as the source matrix for PCA.
         self.pre = D.IntensityPreprocessor(
-            max_missing=cfg["max_missing"], min_variance_quantile=cfg["min_variance_quantile"],
-            top_k_by_variance=cfg["rf_top_k_features"], impute=cfg["impute"], log_transform=True,
+            max_missing=cfg["max_missing"],
+            min_variance_quantile=cfg["min_variance_quantile"],
+            top_k_by_variance=cfg["rf_top_k_features"],
+            impute=cfg["impute"],
+            log_transform=True,
             l2_normalise=False,
+            include_missing_indicators=False,
         ).fit(ds.intensity.loc[self.train_samples])
-        self.log_features = self.pre.features_
-        X_all = self.pre.transform(ds.intensity)              # rows aligned to ds.samples
+        self.log_features = self.pre.output_feature_names()
+        X_all = self.pre.transform(ds.intensity)  # rows aligned to ds.samples
         self.log_index = list(ds.samples)
         self.log_matrix = pd.DataFrame(X_all, index=self.log_index, columns=self.log_features)
 
+        # ---- Representation B2: missingness-aware log-intensity --------------------
+        # Used by Model 4 (RandomForestPairs).
+        self.pre_missing = D.IntensityPreprocessor(
+            max_missing=cfg["max_missing"],
+            min_variance_quantile=cfg["min_variance_quantile"],
+            top_k_by_variance=cfg["rf_top_k_features"],
+            impute=cfg["impute"],
+            log_transform=True,
+            l2_normalise=False,
+            include_missing_indicators=True,
+        ).fit(ds.intensity.loc[self.train_samples])
+        self.log_missing_features = self.pre_missing.output_feature_names()
+        X_all_missing = self.pre_missing.transform(ds.intensity)
+        self.log_missing_matrix = pd.DataFrame(
+            X_all_missing,
+            index=self.log_index,
+            columns=self.log_missing_features,
+        )
+
         # ---- PCA on the (centred) log-intensity matrix, fit on training samples ----
-        # The plan's normalisation options for the PCA-similarity model are "none" or
-        # "L2"; we use "none" here (PCA centres internally).
+        # PCA stays on the original intensity-only representation, not the augmented one.
         from sklearn.decomposition import PCA
         n_comp = min(cfg["pca_components"], len(self.train_samples) - 1, len(self.log_features))
         n_comp = max(2, n_comp)
@@ -93,7 +116,17 @@ class FoldRepresentations:
             self.log_matrix.loc[self.train_samples].values
         )
         Z_all = self.pca.transform(self.log_matrix.values)
-        self.pca_matrix = pd.DataFrame(Z_all, index=self.log_index, columns=[f"PC{i+1}" for i in range(n_comp)])
+        self.pca_matrix = pd.DataFrame(
+            Z_all,
+            index=self.log_index,
+            columns=[f"PC{i+1}" for i in range(n_comp)],
+        )
+    
+        print(
+            f"[repr] log={self.log_matrix.shape} "
+            f"log_missing={self.log_missing_matrix.shape} "
+            f"pca={self.pca_matrix.shape}"
+        )
 
     # ---- accessors used by the model loop ----------------------------------------
 
@@ -104,11 +137,12 @@ class FoldRepresentations:
             return self.pca_matrix
         if representation == "intensity_log":
             return self.log_matrix
+        if representation == "intensity_log_missing":
+            return self.log_missing_matrix
         raise ValueError(representation)
 
     def submatrix(self, representation, samples):
         return self.matrix_for(representation).loc[list(samples)].values
-
 
 # --------------------------------------------------------------------------------------
 # Model construction with configurable hyperparameters
@@ -273,8 +307,9 @@ def cross_dataset_eval(wl: D.PeptidoformDataset, covid: D.PeptidoformDataset, cf
     pos_idx = np.where(lab_w == 1)[0]
 
     # COVID samples projected into each model's feature space
-    covid_saap = D.covid_saap_detection_in_feature_space(covid, reps.saap_features)  # (covid x saap_features)
-    covid_log = reps.pre.transform(covid.intensity)                                  # (covid x log_features)
+    covid_saap = D.covid_saap_detection_in_feature_space(covid, reps.saap_features)
+    covid_log = reps.pre.transform(covid.intensity)
+    covid_log_missing = reps.pre_missing.transform(covid.intensity)
     covid_pca = reps.pca.transform(covid_log)
 
     wl_idx = {s: i for i, s in enumerate(wl.samples)}
@@ -295,6 +330,8 @@ def cross_dataset_eval(wl: D.PeptidoformDataset, covid: D.PeptidoformDataset, cf
                 Xw, Xc = reps.saap_detection.values, covid_saap.values
             elif model.representation == "intensity_pca":
                 Xw, Xc = reps.pca_matrix.values, covid_pca
+            elif model.representation == "intensity_log_missing":
+                Xw, Xc = reps.log_missing_matrix.values, covid_log_missing
             else:
                 Xw, Xc = reps.log_matrix.values, covid_log
             X_stack = np.vstack([Xw, Xc])
@@ -353,8 +390,12 @@ def identification_evaluation(wl: D.PeptidoformDataset, covid, cfg, dbsnp_table=
         covid_block = {}
         if covid is not None:
             covid_block["saap"] = D.covid_saap_detection_in_feature_space(covid, reps.saap_features).values
+
             covid_log = reps.pre.transform(covid.intensity)
+            covid_log_missing = reps.pre_missing.transform(covid.intensity)
+
             covid_block["intensity_log"] = covid_log
+            covid_block["intensity_log_missing"] = covid_log_missing
             covid_block["intensity_pca"] = reps.pca.transform(covid_log)
         models = list(build_models(cfg, saap_freq=reps.saap_freq, saap_pvalue=reps.saap_pvalue))
         models += [_BaselineScorer(b) for b in ("raw_cosine", "raw_spearman")]  # baselines too
