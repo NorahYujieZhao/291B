@@ -1,8 +1,10 @@
 # Sample Identifiability — Methods, Evaluation Design, and Results
 
-CSE 291 class project (Project 2: *Sample identifiability*). Code in [`src/`](src/),
-reproducible with `python src/run.py`. All numbers below are from the full run on the
-downloaded data (`results/`).
+CSE 291 class project (Project 2: *Sample identifiability*). Code in [`src/`](src/).
+
+All numbers below come from a full pipeline run on the downloaded data (`results/`) with
+random seed **0** (`python src/run.py --seed 0` after `download_data`). If your checkout
+includes `pyproject.toml`, you can use `uv run python src/run.py --seed 0` instead.
 
 ---
 
@@ -62,7 +64,7 @@ All feature selection, imputation, PCA and model fitting are done **on training 
 | 1 | **SAAP Jaccard** | A | `s(A,B) = |S_A ∩ S_B| / |S_A ∪ S_B|` over detected SAAPs. Parameter-free. |
 | 2 | **Population-frequency-weighted SAAP** | A | Weighted Jaccard with `w_i = −log10(freq_i + ε)` from dbSNP (corpus detection rate as a fallback when no dbSNP frequency exists), each weight further scaled by a `PValue`-derived confidence factor. |
 | 3 | **Cosine / Euclidean on PCA features** | B → PCA | Cosine similarity between PCA-reduced log-intensity vectors. |
-| 4 | **Random forest on pairwise differences** | B (log) | RF classifier on `d = |log2(A) − log2(B)|` (over the filtered log features), `predict_proba` of "same patient"; reports OOB accuracy and feature importances. |
+| 4 | **Random forest on pairwise differences** | B + **missingness mask** (1000 imputed log₂ intensities concatenated with 1000 per-feature missing indicators → 2000-D per sample) | RF on pairwise absolute differences `d = |u_A − u_B|` in that space; `predict_proba` of "same patient"; reports OOB accuracy and feature importances. |
 | 5 | **Contrastive metric learning** | B → PCA | Shallow MLP (BatchNorm + ReLU + dropout) trained with a contrastive loss; early stopping; `s(A,B) = −‖emb(A) − emb(B)‖`. |
 
 **Reference baselines:** majority-class (always "different"), random scoring, raw cosine and
@@ -152,7 +154,7 @@ is "easy" in the *ranking* sense because plasma proteomic profiles are individua
 | **M1 SAAP Jaccard** | 1.000 | 1.000 | 1.000 | **336 / 336** | 336 | 336 | 0.0% | 330 | 0 |
 | **M2 SAAP weighted** | 1.000 | 1.000 | 1.000 | **336 / 336** | 336 | 336 | 0.0% | 331 | 0 |
 | M3 PCA cosine | 0.923 | 0.964 | 0.940 | **9 / 336** | 301 | 304 | **5.3%** | 0 | 0 |
-| M4 Random forest | 0.988 | 1.000 | 0.994 | **125 / 336** | 332 | 332 | 1.2% | 4 | 0 |
+| M4 Random forest | **0.997** | 1.000 | **0.998** | **335 / 336** | 335 | 335 | **0.3%** | 3 | 0 |
 | M5 Contrastive | 0.952 | 0.994 | 0.973 | **190 / 336** | 320 | 317 | 3.7% | 0 | 0 |
 | baseline raw cosine | 0.991 | 1.000 | 0.995 | **333 / 336** | 333 | 333 | 0.9% | 0 | 0 |
 | baseline raw Spearman | 0.991 | 1.000 | 0.995 | **333 / 336** | 333 | 333 | 0.9% | 0 | 0 |
@@ -164,7 +166,7 @@ is "easy" in the *ranking* sense because plasma proteomic profiles are individua
 | **M1 SAAP Jaccard** | 0.992 | 0.992 | 0.991 | 0.989 | 0.986 | **0.989** | 0.014 | ≈0 |
 | **M2 SAAP weighted** | 0.992 | 0.993 | 0.992 | 0.992 | 0.961 | **0.992** | 0.039 | ≈0 |
 | M3 PCA cosine | 0.797 | 0.492 | 0.374 | 0.196 | — | **0.000** | — | 0.199 (flagged) |
-| M4 Random forest | 1.000 | 0.998 | 1.000 | 0.939 | 1.000 | **0.086** | 0.000 | ≈0 |
+| M4 Random forest | **1.000** | **0.999** | 1.000 | **0.963** | 1.000 | **0.095** | 0.000 | ≈0 |
 | M5 Contrastive | 0.987 | 0.890 | 0.726 | 0.424 | — | **0.000** | — | 0.012 |
 | baseline raw cosine | 0.997 | 0.961 | 0.945 | 0.672 | — | **0.000** | — | — |
 | baseline raw Spearman | 0.992 | 0.924 | 0.844 | 0.580 | — | **0.000** | — | — |
@@ -180,7 +182,7 @@ pairs, the model accepts essentially nothing on the held-out pairs.)
 | M1 SAAP Jaccard | 0.843 | **0.000** | 0.996 | **0.0%** |
 | M2 SAAP weighted | 0.852 | **0.000** | 0.996 | **0.0%** |
 | M3 PCA cosine | 0.761 | 0.998 | 0.957 | 6.6% |
-| M4 Random forest | 0.962 | 0.954 | 0.994 | 2.7% |
+| M4 Random forest | **0.975** | **0.941** | **0.998** | **1.5%** |
 | M5 Contrastive | (−0.13) | (−0.09) | 0.996 | 2.2% |
 
 No weight-loss query is ever top-matched to a COVID sample, for any model (the COVID samples lose
@@ -218,25 +220,26 @@ at every gap), confirming SAAPs behave as stable identity markers across the yea
    follows from plasma proteomic profiles being individual-specific (plus batch effects). It does
    **not** imply a usable decision rule.
 
-2. **Once you require a transferable decision rule, a clear hierarchy appears.** Under a leak-free
-   fixed pairwise threshold (`op_*`) or under FDR-controlled open-set identification:
-   * **SAAP-detection models (M1, M2)** are the clear winners — `op recall ≈ 0.99`; **336 / 336**
-     queries correctly identified at 1% true FDR; they pass even the strict decoy-free entrapment
-     criterion (330–331 / 336); and they reject the external cohort perfectly (0% cross false
-     matches). Their Jaccard scores are bimodal (≈0.5–0.85 for same person, ≈0 for different
-     person and for cross-cohort), so a natural threshold exists and transfers across folds.
-   * **Raw cosine / Spearman** rank well per query (Top-1 ≈ 0.99 open-set, 333 / 336 confident
-     IDs) but have **no usable global threshold** (`op recall = 0`) and fail the entrapment check
-     — because the absolute similarity of a sample to *everything* depends on its sequencing
-     depth / batch, so a single threshold is not meaningful.
-   * **Random forest (M4)** and **contrastive embedding (M5)** are intermediate: great at ranking,
-     but their `predict_proba` / embedding distances are not calibrated for a global threshold
-     (`op recall ≈ 0.09 / 0.0`), so only 125 / 336 (M4) and 190 / 336 (M5) queries are confident
-     at 1% true FDR.
-   * **PCA-cosine (M3)** is the weakest — only 9 / 336 confident at 1% true FDR — and (a Stage-2
-     point) the **target-decoy FDR estimate is unreliable for it**: it claims 304 IDs at "1% FDR"
-     but the *actual* FDR there is 5.3%. For M1/M2/M4 the decoy estimate is within ≈1% of the
-     truth.
+2. **Once you require a transferable decision rule, a clear hierarchy appears** — but **M4 is now much closer to the SAAP models on open-set FDR** after wiring the random forest to the **missingness-aware 2000-D representation**. Under a leak-free fixed pairwise
+   threshold (`op_*`) or under FDR-controlled open-set identification:
+   * **SAAP-detection models (M1, M2)** remain the reference — `op recall ≈ 0.99`; **336 / 336**
+     queries correctly identified at 1% true FDR; they pass the strict decoy-free entrapment check
+     (330–331 / 336); and they reject the external cohort perfectly (0% cross false matches at the
+     95%-within-recall operating point). Their scores are bimodal, so a natural threshold transfers.
+   * **Random forest (M4)** now reaches **335 / 336** correct queries at 1% true FDR with **≈0.3%**
+     observed FDR at the decoy-chosen threshold (target–decoy is trustworthy here, unlike M3). Open-set
+     Top-1 is **0.997**. The **leak-free `op_recall` is still only ≈0.095**, so raw RF probabilities are
+     *not* yet aligned with a single global pairwise threshold the way SAAP scores are — ranking and
+     FDR-controlled search improved far more than the transferred train-threshold rule.
+   * **Contrastive embedding (M5)** is still intermediate on open-set FDR (**190 / 336** at 1% true FDR)
+     with **`op recall = 0`** — good ranking, weak global calibration.
+   * **Raw cosine / Spearman** rank well per query (Top-1 ≈ 0.99 open-set, 333 / 336 confident IDs) but
+     have **no usable global threshold** (`op recall = 0`) and fail the entrapment check, because
+     absolute similarity depends on depth/batch.
+   * **PCA-cosine (M3)** is the weakest — only **9 / 336** confident at 1% true FDR — and the
+     **target-decoy FDR estimate is unreliable**: 304 IDs at the decoy-chosen "1% FDR" threshold but
+     **5.3%** observed FDR there. M1/M2/**M4** now all show decoy and observed FDR within about one
+     percentage point at that operating point.
 
 3. **Worldwide identifiability is essentially universal here** — 97.3% of samples, conservatively.
    The few exceptions are low-depth runs with too few detected SAAPs, not biologically harder
@@ -268,10 +271,17 @@ at every gap), confirming SAAPs behave as stable identity markers across the yea
 
 ```bash
 pip install -r requirements.txt
-python src/download_data.py        # datasets into data/
-python src/run.py                  # full pipeline; results into results/
-python src/run.py --quick          # fast smoke-test configuration
+python src/download_data.py
+python src/run.py --seed 0              # full pipeline; writes results/
+python src/run.py --quick               # fast smoke-test configuration
 ```
+
+If the repo includes `pyproject.toml` / `uv.lock`, you can use `uv sync` and
+`uv run python src/run.py --seed 0 --no-download` instead of the `pip` / `python` lines above.
+
+Optional evaluation figures (not required for the pipeline): install `matplotlib`, then run
+`python scripts/plot_evaluation_figures.py --results-dir results --out-dir information/figures`
+(reads `identification_fdr.csv` and `cv_summary.csv` from `results/`).
 
 Outputs in `results/`: `cv_summary.csv` / `cv_detail.csv` (primary + secondary metrics, per fold
 and mean±std), `cv_overfit_check.csv`, `identification_fdr.csv` (open-set identification + FDR),
