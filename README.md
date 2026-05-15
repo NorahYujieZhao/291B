@@ -15,11 +15,24 @@ This repository implements the approach in `291B_ProjectPlan.pdf`:
 | 1 | SAAP Jaccard similarity | binary SAAP detection vectors | parameter-free baseline |
 | 2 | Population-frequency-weighted SAAP similarity | binary SAAP detection vectors | weights rare SAAPs (dbSNP allele freq), down-weights low-confidence IDs by `PValue` |
 | 3 | Cosine / Euclidean similarity on PCA features | filtered log-intensity → PCA | continuous-abundance baseline |
-| 4 | Random forest on pairwise differences | filtered log-intensity `d = |log2 A − log2 B|` | predicts same- vs different-patient; reports OOB accuracy + feature importances |
-| 5 | Contrastive metric learning | PCA features → shallow MLP | trained with contrastive loss; early stopping (PyTorch, optional) |
+| 4 | Random forest on pairwise differences | **log-intensity + missingness mask** (2000-D); pairwise absolute differences | same- vs different-patient; OOB + importances |
+| 5 | Contrastive metric learning | filtered log-intensity → PCA | shallow MLP; contrastive loss; embedding distance as similarity |
 
 Reference baselines: majority-class (always "different"), random scoring, raw cosine and
 raw Spearman similarity on the preprocessed intensity matrix.
+
+### Optional: evaluation figures for LaTeX / Overleaf
+
+After a full `run.py` (so `results/identification_fdr.csv` and `results/cv_summary.csv` exist), install **matplotlib** (not listed in `requirements.txt` because the main pipeline does not need it), then:
+
+```bash
+python scripts/plot_evaluation_figures.py --results-dir results --out-dir information/figures
+```
+
+If the repo includes `pyproject.toml` / `uv.lock`, you can use `uv sync` and
+`uv run python scripts/plot_evaluation_figures.py --results-dir results --out-dir information/figures` instead.
+
+This writes three PDFs under `information/figures/`: `eval_fig_openset_true_fdr1.pdf`, `eval_fig_leakfree_op_recall.pdf`, and `eval_fig_decoy_vs_observed_fdr.pdf`.
 
 ### Evaluation (three complementary views, not just AUROC)
 
@@ -54,8 +67,11 @@ src/
   evaluate.py               # AUROC/AUPRC/TPR@FPR, Recall@k/mAP, baselines,
                             #   cross-dataset robustness, worldwide identifiability
   run.py                    # end-to-end pipeline (download → preprocess → CV → cross-dataset → worldwide)
+scripts/
+  plot_evaluation_figures.py  # PDF figures from results/*.csv → information/figures/
 results/                    # CSV / JSON outputs (created by run.py)
 requirements.txt
+pyproject.toml              # optional (some checkouts): uv; see uv.lock for pinned deps
 ```
 
 ## Quick start
@@ -68,7 +84,7 @@ pip install -r requirements.txt
 python src/download_data.py
 
 # 2. run everything (patient-level 5-fold CV + cross-dataset test + worldwide identifiability)
-python src/run.py
+python src/run.py --seed 0    # fixed seed matches numbers in report.md
 
 # faster smoke test on a subset of features / fewer folds / fewer epochs:
 python src/run.py --quick
