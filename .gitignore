@@ -5,6 +5,7 @@ data/*.csv
 # generated results
 results/
 # python
+.venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
