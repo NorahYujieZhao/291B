@@ -122,6 +122,18 @@ def plot_leakfree_op_recall(cv: pd.DataFrame, out: Path) -> None:
     ax.set_title("Train-threshold → test pairs")
     ax.grid(axis="x", alpha=0.85)
     ax.set_axisbelow(True)
+    for i, (_, row) in enumerate(sub.iterrows()):
+        v = float(row["op_recall_mean"])
+        if v < 0.02:
+            ax.text(
+                max(v + float(row.get("op_recall_std", 0) or 0), 0.01) + 0.02,
+                i,
+                "≈0",
+                va="center",
+                ha="left",
+                fontsize=7,
+                color="#57534E",
+            )
     fig.savefig(out, format="pdf")
     plt.close(fig)
 
@@ -160,7 +172,7 @@ def plot_decoy_vs_observed_fdr(ident: pd.DataFrame, out: Path) -> None:
     )
     ax.set_xticks(list(x))
     ax.set_xticklabels(["M1", "M2", "M3", "M4", "M5"])
-    ax.set_ylabel("FDR (%) @ decoy-chosen 1% threshold")
+    ax.set_ylabel("FDR at decoy-selected 1% threshold (%)")
     ax.legend(frameon=True, fancybox=False, edgecolor="#E7E5E4", fontsize=7, loc="upper right")
     ax.set_title("Decoy vs observed FDR")
     ax.grid(axis="y", alpha=0.85)
