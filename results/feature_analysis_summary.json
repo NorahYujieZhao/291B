@@ -1,0 +1,9 @@
+{
+  "n_rf_features": 2000,
+  "n_rf_peptides": 2000,
+  "n_saap_features_ranked": 813,
+  "n_top_examples": 50,
+  "top_k_requested": 25,
+  "top_rf_peptide": ".-18.011EPQVYTLPPSRDELTK",
+  "top_saap_feature": ".EVQ-14.975LVESGGGLVKPGGSLR."
+}

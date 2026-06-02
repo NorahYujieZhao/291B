@@ -187,8 +187,8 @@
       "n_neg_std": 365.96147338210335,
       "AUROC_mean": 0.9999255505794359,
       "AUROC_std": 0.0001664739652669851,
-      "AUPRC_mean": 0.9991231081987655,
-      "AUPRC_std": 0.001960789676472397,
+      "AUPRC_mean": 0.9991231081987657,
+      "AUPRC_std": 0.001960789676472415,
       "TPR@FPR=0.01_mean": 1.0,
       "TPR@FPR=0.01_std": 0.0,
       "TPR@FPR=0.001_mean": 0.9613636363636363,
@@ -1073,7 +1073,7 @@
       "model": "M4_RandomForest",
       "n_within_pos": 924,
       "n_cross": 30912,
-      "within_pos_score_p05": 0.9187363955488957,
+      "within_pos_score_p05": 0.9187363955488959,
       "within_pos_score_median": 0.9753792388167388,
       "cross_score_max": 0.9408970020164906,
       "cross_score_median": 0.007936507936507934,
@@ -1101,5 +1101,21 @@
     "n_saap_features": 7431,
     "n_saap_features_with_freq": 2887,
     "identifiability_threshold": 1e-10
+  },
+  "feature_analysis": {
+    "n_rf_features": 2000,
+    "n_rf_peptides": 2000,
+    "n_saap_features_ranked": 813,
+    "n_top_examples": 50,
+    "top_k_requested": 25,
+    "top_rf_peptide": ".-18.011EPQVYTLPPSRDELTK",
+    "top_saap_feature": ".EVQ-14.975LVESGGGLVKPGGSLR."
+  },
+  "feature_analysis_files": {
+    "rf_feature_importance_raw": "/Users/edwardsaucin/Desktop/291B-test/results/rf_feature_importance_raw.csv",
+    "rf_top_peptides": "/Users/edwardsaucin/Desktop/291B-test/results/rf_top_peptides.csv",
+    "saap_feature_importance": "/Users/edwardsaucin/Desktop/291B-test/results/saap_feature_importance.csv",
+    "top_peptide_examples": "/Users/edwardsaucin/Desktop/291B-test/results/top_peptide_examples.csv",
+    "feature_analysis_summary": "/Users/edwardsaucin/Desktop/291B-test/results/feature_analysis_summary.json"
   }
 }

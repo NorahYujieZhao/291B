@@ -21,7 +21,7 @@ This repository implements the approach in `291B_ProjectPlan.pdf`:
 Reference baselines: majority-class (always "different"), random scoring, raw cosine and
 raw Spearman similarity on the preprocessed intensity matrix.
 
-### Optional: evaluation figures for LaTeX / Overleaf
+## Optional: evaluation figures for LaTeX / Overleaf
 
 After a full `run.py` (so `results/identification_fdr.csv` and `results/cv_summary.csv` exist), install **matplotlib** (not listed in `requirements.txt` because the main pipeline does not need it), then:
 
@@ -32,9 +32,34 @@ python scripts/plot_evaluation_figures.py --results-dir results --out-dir inform
 If the repo includes `pyproject.toml` / `uv.lock`, you can use `uv sync` and
 `uv run python scripts/plot_evaluation_figures.py --results-dir results --out-dir information/figures` instead.
 
-This writes three PDFs under `information/figures/`: `eval_fig_openset_true_fdr1.pdf`, `eval_fig_leakfree_op_recall.pdf`, and `eval_fig_decoy_vs_observed_fdr.pdf`.
+This writes three PDFs under `information/figures/`:
 
-### Evaluation (three complementary views, not just AUROC)
+- `eval_fig_openset_true_fdr1.pdf`
+- `eval_fig_leakfree_op_recall.pdf`
+- `eval_fig_decoy_vs_observed_fdr.pdf`
+
+## Optional: post-hoc feature analysis outputs for the report
+
+After a full `run.py`, the pipeline can also export feature-importance summaries and top-peptide
+tables for the final report. These outputs are generated automatically if `run.py` calls
+`src/feature_analysis.py`, or can be generated separately with:
+
+```bash
+python src/feature_analysis.py --top-k 25
+```
+
+This writes additional files under `results/`:
+
+- `rf_feature_importance_raw.csv`
+- `rf_top_peptides.csv`
+- `saap_feature_importance.csv`
+- `top_peptide_examples.csv`
+- `feature_analysis_summary.json`
+
+These files are intended for the final-stage feature-importance, peptide-level, and
+protein-mapping analyses.
+
+## Evaluation (three complementary views, not just AUROC)
 
 Threshold-free rank metrics (AUROC, AUPRC, TPR@low-FPR, Recall@1/@k, mAP) tell you whether
 same-patient pairs *tend to outrank* different-patient pairs — but a high AUROC does not
@@ -57,15 +82,16 @@ imply a usable fixed decision rule. So the evaluation also reports:
 
 ## Layout
 
-```
+```text
 data/                       # datasets (downloaded; git-ignored)
 src/
   download_data.py          # fetch all datasets into data/
   data.py                   # load tables, build SAAP / intensity representations,
                             #   feature selection, patient-level CV folds, pair generation
-  models.py                 # Models 1–5
   evaluate.py               # AUROC/AUPRC/TPR@FPR, Recall@k/mAP, baselines,
                             #   cross-dataset robustness, worldwide identifiability
+  feature_analysis.py       # post-hoc feature ranking and top-peptide summary export
+  models.py                 # Models 1–5
   run.py                    # end-to-end pipeline (download → preprocess → CV → cross-dataset → worldwide)
 scripts/
   plot_evaluation_figures.py  # PDF figures from results/*.csv → information/figures/
@@ -91,6 +117,9 @@ python src/run.py --quick
 
 # skip the optional analyses:
 python src/run.py --no-covid --no-worldwide
+
+# optional: run post-hoc feature analysis directly
+python src/feature_analysis.py --top-k 25
 ```
 
 `run.py` downloads any missing data automatically (pass `--no-download` to disable). Outputs
@@ -103,8 +132,13 @@ are printed and written to `results/`:
   and true FDR), open-set Recall@1, empirical-null yield, cross-cohort hit count;
 * `longitudinal_consistency.csv` — per-model same-patient score and sensitivity by time-point gap;
 * `cross_dataset.csv` — within-cohort same-patient vs. weight-loss↔COVID separation per model;
-* `worldwide_identifiability.csv` / `…_summary.json` — per-sample random-match probability and
-  whether it is below 1 in 10 billion;
+* `worldwide_identifiability.csv` / `worldwide_identifiability_summary.json` — per-sample random-match
+  probability and whether it is below 1 in 10 billion;
+* `rf_feature_importance_raw.csv` — raw Random Forest feature importances over abundance and missingness features;
+* `rf_top_peptides.csv` — peptide-level Random Forest importance summary;
+* `saap_feature_importance.csv` — ranked SAAP features based on within-patient vs between-patient sharing;
+* `top_peptide_examples.csv` — merged shortlist of top peptide examples for downstream analysis;
+* `feature_analysis_summary.json` — summary of the exported feature-analysis outputs;
 * `summary.json` — everything combined, including the configuration used.
 
 ## Data sources

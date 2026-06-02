@@ -39,6 +39,7 @@ import data as D                      # noqa: E402
 import models as M                    # noqa: E402
 import evaluate as E                  # noqa: E402
 import download_data as DL            # noqa: E402
+import feature_analysis as FA
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
@@ -634,6 +635,15 @@ def main(argv=None):
         print(f"[run]   {ww_summary['n_identifiable']}/{ww_summary['n_samples']} samples "
               f"({100*ww_summary['frac_identifiable']:.1f}%) are uniquely identifiable worldwide "
               f"(< 1 in 10 billion).")
+        
+    feature_outputs = FA.write_feature_analysis(
+        results_dir=args.results_dir,
+        ds=wl,
+        cfg=cfg,
+        dbsnp_table=dbsnp_table,
+        top_k=25,
+        verbose=True,
+    )
 
     # ---- write a combined summary -------------------------------------------------
     combined = {
@@ -646,6 +656,8 @@ def main(argv=None):
         "longitudinal_consistency": (long_all.to_dict(orient="records") if not long_all.empty else None),
         "cross_dataset": (cross_df.to_dict(orient="records") if cross_df is not None else None),
         "worldwide_identifiability": ww_summary,
+        "feature_analysis": feature_outputs["summary"],
+        "feature_analysis_files": feature_outputs["paths"],
     }
     with open(os.path.join(args.results_dir, "summary.json"), "w") as fh:
         json.dump(combined, fh, indent=2, default=str)
