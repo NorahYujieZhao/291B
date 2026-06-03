@@ -59,6 +59,23 @@ This writes additional files under `results/`:
 These files are intended for the final-stage feature-importance, peptide-level, and
 protein-mapping analyses.
 
+### Feature-class correlation and supporting figures (TA Stage 2)
+
+After ``top_peptide_examples.csv`` exists, run (or use full ``run.py``, which calls this automatically):
+
+```bash
+python src/feature_assessment.py --top-k 25
+# or: uv run python scripts/plot_feature_assessment.py
+```
+
+Writes:
+
+- `feature_class_correlation.csv` — pair-level AUROC / point-biserial *r* vs same-patient vs different-patient
+- `information/figures/feature_heatmap_intensity.pdf` — log-intensity heatmap (samples ordered by patient)
+- `information/figures/feature_heatmap_saap.pdf` — SAAP detection heatmap
+- `information/figures/feature_hist_logdiff_pairs.pdf` — |Δlog₂| distributions for same vs different pairs
+- `information/figures/feature_hist_saap_codetect.pdf` — SAAP co-detection rate by pair class
+
 ## Evaluation (three complementary views, not just AUROC)
 
 Threshold-free rank metrics (AUROC, AUPRC, TPR@low-FPR, Recall@1/@k, mAP) tell you whether
@@ -95,6 +112,7 @@ src/
   run.py                    # end-to-end pipeline (download → preprocess → CV → cross-dataset → worldwide)
 scripts/
   plot_evaluation_figures.py  # PDF figures from results/*.csv → information/figures/
+  plot_feature_assessment.py  # class correlation + feature heatmaps / histograms
 results/                    # CSV / JSON outputs (created by run.py)
 requirements.txt
 pyproject.toml              # optional (some checkouts): uv; see uv.lock for pinned deps
@@ -139,6 +157,8 @@ are printed and written to `results/`:
 * `saap_feature_importance.csv` — ranked SAAP features based on within-patient vs between-patient sharing;
 * `top_peptide_examples.csv` — merged shortlist of top peptide examples for downstream analysis;
 * `feature_analysis_summary.json` — summary of the exported feature-analysis outputs;
+* `feature_class_correlation.csv` — pair-level association with same- vs different-patient (see feature assessment below);
+* `feature_assessment_summary.json` — paths to supporting feature figures;
 * `summary.json` — everything combined, including the configuration used.
 
 ## Data sources

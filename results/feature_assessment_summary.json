@@ -1,0 +1,12 @@
+{
+  "n_features_correlated": 38,
+  "top_k_from_examples": 25,
+  "class_definition": "same_patient_pair=1, different_patient_pair=0",
+  "correlation_csv": "/Users/naichengyu/Desktop/Code/291B/results/feature_class_correlation.csv",
+  "figures": {
+    "heatmap_intensity": "/Users/naichengyu/Desktop/Code/291B/information/figures/feature_heatmap_intensity.pdf",
+    "hist_logdiff": "/Users/naichengyu/Desktop/Code/291B/information/figures/feature_hist_logdiff_pairs.pdf",
+    "heatmap_saap": "/Users/naichengyu/Desktop/Code/291B/information/figures/feature_heatmap_saap.pdf",
+    "hist_saap_codetect": "/Users/naichengyu/Desktop/Code/291B/information/figures/feature_hist_saap_codetect.pdf"
+  }
+}
