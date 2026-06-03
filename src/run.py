@@ -40,6 +40,7 @@ import models as M                    # noqa: E402
 import evaluate as E                  # noqa: E402
 import download_data as DL            # noqa: E402
 import feature_analysis as FA
+import feature_assessment as FAssess
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(REPO_ROOT, "data")
@@ -645,6 +646,17 @@ def main(argv=None):
         verbose=True,
     )
 
+    assess_outputs = FAssess.write_feature_assessment(
+        results_dir=args.results_dir,
+        figures_dir=os.path.join(REPO_ROOT, "information", "figures"),
+        ds=wl,
+        cfg=cfg,
+        dbsnp_table=dbsnp_table,
+        top_k=25,
+        seed=cfg["seed"],
+        verbose=True,
+    )
+
     # ---- write a combined summary -------------------------------------------------
     combined = {
         "config": cfg,
@@ -658,6 +670,7 @@ def main(argv=None):
         "worldwide_identifiability": ww_summary,
         "feature_analysis": feature_outputs["summary"],
         "feature_analysis_files": feature_outputs["paths"],
+        "feature_assessment": assess_outputs.get("paths", {}),
     }
     with open(os.path.join(args.results_dir, "summary.json"), "w") as fh:
         json.dump(combined, fh, indent=2, default=str)
