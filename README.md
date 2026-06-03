@@ -59,6 +59,34 @@ This writes additional files under `results/`:
 These files are intended for the final-stage feature-importance, peptide-level, and
 protein-mapping analyses.
 
+## Optional: peptide/variant assessment helper for the final report
+
+After `src/feature_analysis.py` has produced `results/saap_feature_importance.csv`, the
+top SAAP variants can be summarized for the final peptide/variant identification and
+peptide/variant-level differential-abundance sections with:
+
+```bash
+python scripts/peptide_variant_assessment.py --top-n 3
+```
+
+This helper reads the ranked SAAP table plus `data/weightloss_peptidoforms.tsv` and writes
+all outputs under `results/final_assessment/`:
+
+- `top_variant_assessment_summary.csv` -- report-ready metadata for the selected variants,
+  including PValue, explained intensity, FDR, protein mapping, missingness, within-patient
+  recurrence, and variant-vs-unmodified intensity tests.
+- `top_variant_sample_intensities.csv` and `top_variant_by_patient_detection.csv` -- detailed
+  sample-level and patient-level detection/intensity tables.
+- `top_variant_raw_rows.csv` -- the raw source rows for the selected variants.
+- `peptide_variant_assessment_checklist.md` -- manual Lorikeet/MassIVE-KB screenshot checklist.
+- `peptide_variant_differential_abundance_notes.md` -- short report-oriented notes for the
+  peptide/variant-level differential-abundance interpretation.
+- `rank*_intensity_histogram.svg/.png` and `rank*_variant_detection_by_patient.svg/.png` --
+  figures for Overleaf/report inclusion.
+
+PNG rendering uses a local Edge/Chrome executable when available. Pass `--no-png` to keep
+only the CSV/Markdown/SVG outputs.
+
 ## Evaluation (three complementary views, not just AUROC)
 
 Threshold-free rank metrics (AUROC, AUPRC, TPR@low-FPR, Recall@1/@k, mAP) tell you whether
@@ -95,6 +123,7 @@ src/
   run.py                    # end-to-end pipeline (download → preprocess → CV → cross-dataset → worldwide)
 scripts/
   plot_evaluation_figures.py  # PDF figures from results/*.csv → information/figures/
+  peptide_variant_assessment.py  # final-report peptide/variant assessment tables + figures
 results/                    # CSV / JSON outputs (created by run.py)
 requirements.txt
 pyproject.toml              # optional (some checkouts): uv; see uv.lock for pinned deps
@@ -120,6 +149,9 @@ python src/run.py --no-covid --no-worldwide
 
 # optional: run post-hoc feature analysis directly
 python src/feature_analysis.py --top-k 25
+
+# optional: summarize top variant peptides for final-report assessment
+python scripts/peptide_variant_assessment.py --top-n 3
 ```
 
 `run.py` downloads any missing data automatically (pass `--no-download` to disable). Outputs
